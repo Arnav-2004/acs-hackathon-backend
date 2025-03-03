@@ -1,0 +1,10 @@
+services:
+  - name: acs-hackathon-backend
+    type: web
+    runtime: docker
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+    dockerCommand: "gunicorn -b 0.0.0.0:5000 app:app"

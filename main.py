@@ -347,13 +347,6 @@ def generate(input):
 
 def generate_insights(url):
     # This function will run some common attacks on the provided URL and generate insights
-    commands = [
-        "apt-get update && apt-get install -y nmap",
-    ]
-    for cmd in commands:
-        print(cmd)
-        subprocess.run(cmd, shell=True)
-
     insights = {}
 
     # Run a port scan using nmap
