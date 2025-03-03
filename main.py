@@ -177,6 +177,11 @@ def scrape_known_exploited_route(year):
     data = scrape_known_exploited(year)
     return jsonify(data)
 
+@app.route('/scrape-news', methods=['GET'])
+def scrape_news_route():
+    data = scrape_news()
+    return jsonify(data)
+
 # Generate insights using Gemini
 @app.route('/generate-insights', methods=['POST'])
 def generate_insights_route():
@@ -397,6 +402,32 @@ def scrape_known_exploited(year):
         }
     
     return cveinfo_data
+
+def scrape_news():
+    base_url = "https://thehackernews.com/search/label/Vulnerability"
+
+    res = requests.get(base_url, headers=HEADERS)
+    soup = BeautifulSoup(res.text, 'lxml')
+
+    news_data = {}
+
+    all_news = soup.find_all('div', class_='blog-posts clear')
+
+    index = 0
+    for news in all_news:
+        body = news.find_all('div', class_='body-post clear')
+        for b in body:
+            title = b.find('h2', class_='home-title').text.strip()
+            description = b.find('div', class_='home-desc').text.strip()
+            link = b.find('a', href=True)['href']
+            news_data[index] = {
+                'title': title,
+                'description': description,
+                'link': link
+            }
+            index += 1
+
+    return news_data
 
 if __name__ == '__main__':
     app.run(debug=True)
