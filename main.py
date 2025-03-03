@@ -358,8 +358,8 @@ def generate_insights(url):
     insights['udp_scan'] = udp_scan_result.stdout
 
     # Run a ping scan
-    ping_result = subprocess.run(['ping', '-c', '4', url], capture_output=True, text=True)
-    insights['ping'] = ping_result.stdout
+    # ping_result = subprocess.run(['ping', '-c', '4', url], capture_output=True, text=True)
+    # insights['ping'] = ping_result.stdout
 
     # Here you can add more scans or attacks as needed
     data = generate(insights)
