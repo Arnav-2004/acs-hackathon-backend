@@ -3,5 +3,7 @@ beautifulsoup4
 requests
 lxml
 gunicorn
-pymongo[srv]
+pymongo
 flask-cors
+python-dotenv
+Werkzeug

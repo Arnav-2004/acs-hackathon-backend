@@ -1,13 +1,150 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from bs4 import BeautifulSoup
 import requests
 from flask_cors import CORS
+from pymongo import MongoClient
+from dotenv import load_dotenv
+import os
+from werkzeug.security import generate_password_hash, check_password_hash
 
+# Load environment variables
+load_dotenv()
+
+# Initialize Flask app
 app = Flask(__name__)
 CORS(app)
 
+# Connect to MongoDB
+client = MongoClient(os.getenv('MONGO_URI'))
+db = client['acshackathon']  # Replace with your database name
+users_collection = db['users']  # Collection to store user data
+
+# Headers for web scraping
 HEADERS = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
 
+# Helper function to hash passwords
+def hash_password(password):
+    return generate_password_hash(password)
+
+# Helper function to verify passwords
+def verify_password(hashed_password, password):
+    return check_password_hash(hashed_password, password)
+
+# Signup API
+@app.route('/signup', methods=['POST'])
+def signup():
+    data = request.get_json()
+    username = data.get('username')
+    email = data.get('email')
+    password = data.get('password')
+
+    if not username or not password:
+        return jsonify({'error': 'Username and password are required'}), 400
+
+    # Check if the user already exists
+    if users_collection.find_one({'username': username}):
+        return jsonify({'error': 'Username already exists'}), 400
+
+    # Hash the password
+    hashed_password = hash_password(password)
+
+    # Insert the new user into the database
+    users_collection.insert_one({
+        'username': username,
+        'email': email,
+        'password': hashed_password
+    })
+
+    return jsonify({'message': 'User created successfully'}), 201
+
+# Login API
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')
+
+    if not email or not password:
+        return jsonify({'error': 'Email and password are required'}), 400
+
+    # Find the user in the database
+    user = users_collection.find_one({'email': email})
+
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    # Verify the password
+    if not verify_password(user['password'], password):
+        return jsonify({'error': 'Invalid password'}), 401
+
+    return jsonify({'message': 'Login successful', 'username': user['username']}), 200
+
+# Update User API
+@app.route('/update-user', methods=['PUT'])
+def update_user():
+    data = request.get_json()
+    username = data.get('username')
+    new_username = data.get('new_username')
+    new_email = data.get('new_email')
+    new_password = data.get('new_password')
+
+    if not username:
+        return jsonify({'error': 'Username is required to identify the user'}), 400
+
+    # Find the user in the database
+    user = users_collection.find_one({'username': username})
+
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    # Prepare the update payload
+    update_payload = {}
+    if new_username:
+        # Check if the new username already exists
+        if users_collection.find_one({'username': new_username}):
+            return jsonify({'error': 'New username already exists'}), 400
+        update_payload['username'] = new_username
+    if new_email:
+        # Check if the new email already exists
+        if users_collection.find_one({'email': new_email}):
+            return jsonify({'error': 'New email already exists'}), 400
+        update_payload['email'] = new_email
+    if new_password:
+        # Hash the new password
+        update_payload['password'] = hash_password(new_password)
+
+    # Update the user in the database
+    users_collection.update_one({'username': username}, {'$set': update_payload})
+
+    return jsonify({'message': 'User updated successfully'}), 200
+
+# Existing routes for scraping
+@app.route('/scrape-by-date/<int:year>', methods=['GET'])
+def scrape_by_date_route(year):
+    data = scrape_by_date(year)
+    return jsonify(data)
+
+@app.route('/no-of-cves-by-year', methods=['GET'])
+def no_of_cves_by_year_route():
+    data = no_of_cves_by_year()
+    return jsonify(data)
+
+@app.route('/scrape-by-type', methods=['GET'])
+def scrape_by_type_route():
+    data = scrape_by_type()
+    return jsonify(data)
+
+@app.route('/scrape-by-impact-types', methods=['GET'])
+def scrape_by_impact_types_route():
+    data = scrape_by_impact_types()
+    return jsonify(data)
+
+@app.route('/scrape-known-exploited/<int:year>', methods=['GET'])
+def scrape_known_exploited_route(year):
+    data = scrape_known_exploited(year)
+    return jsonify(data)
+
+# Existing scraping functions
 def scrape_by_date(year):
     base_url = f'https://www.cvedetails.com/vulnerability-list/year-{year}/vulnerabilities.html'
     
@@ -147,7 +284,6 @@ def scrape_known_exploited(year):
         publisheddate = info.find_all('div', class_="row mb-1")[2].text.split("\n")[2].strip()
         updateddate = info.find_all('div', class_="row mb-1")[3].text.split("\n")[2].strip()
         cisakevadded = info.find('div', class_="col-md-3").find('div', string="CISA KEV Added").find_next_sibling('div').text.strip()
-        print(cisakevadded)
         cveinfo_data[index] = {
             'cveid': cveid,
             'summary': summary,
@@ -160,31 +296,6 @@ def scrape_known_exploited(year):
         }
     
     return cveinfo_data
-
-@app.route('/scrape-by-date/<int:year>', methods=['GET'])
-def scrape_by_date_route(year):
-    data = scrape_by_date(year)
-    return jsonify(data)
-
-@app.route('/no-of-cves-by-year', methods=['GET'])
-def no_of_cves_by_year_route():
-    data = no_of_cves_by_year()
-    return jsonify(data)
-
-@app.route('/scrape-by-type', methods=['GET'])
-def scrape_by_type_route():
-    data = scrape_by_type()
-    return jsonify(data)
-
-@app.route('/scrape-by-impact-types', methods=['GET'])
-def scrape_by_impact_types_route():
-    data = scrape_by_impact_types()
-    return jsonify(data)
-
-@app.route('/scrape-known-exploited/<int:year>', methods=['GET'])
-def scrape_known_exploited_route(year):
-    data = scrape_known_exploited(year)
-    return jsonify(data)
 
 if __name__ == '__main__':
     app.run(debug=True)
