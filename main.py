@@ -25,6 +25,7 @@ def scrape_by_date(year):
         epssscore = info.find('span', class_="epssbox").text.strip()
         publisheddate = info.find_all('div', class_="row mb-1")[2].text.split("\n")[2].strip()
         updateddate = info.find_all('div', class_="row mb-1")[3].text.split("\n")[2].strip()
+        link = f"https://www.cvedetails.com{info.find('a').get('href')}"
         cveinfo_data[index] = {
             'cveid': cveid,
             'summary': summary,
@@ -32,7 +33,8 @@ def scrape_by_date(year):
             'maxcvss': maxcvss,
             'epssscore': epssscore,
             'publisheddate': publisheddate,
-            'updateddate': updateddate
+            'updateddate': updateddate,
+            'link': link
         }
     
     return cveinfo_data
