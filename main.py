@@ -371,13 +371,17 @@ def generate(input):
 def generate_insights(url):
     insights = {}
 
-    # Example of using nmap for network scanning
+    # Run nmap scan
     nmap_scan_result = subprocess.run(['sudo', 'nmap', '-sS', url], capture_output=True, text=True)
     insights['nmap_scan'] = nmap_scan_result.stdout
 
-    # Example of using Nikto for web server scanning
-    nikto_scan_result = subprocess.run(['nikto', '-h', url], capture_output=True, text=True)
+    # Run Nikto scan
+    nikto_scan_result = subprocess.run(['sudo', 'nikto', '-h', url], capture_output=True, text=True)
     insights['nikto_scan'] = nikto_scan_result.stdout
+
+    # Run whatweb scan
+    whatweb_scan_result = subprocess.run(['sudo', 'whatweb', url], capture_output=True, text=True)
+    insights['whatweb_scan'] = whatweb_scan_result.stdout
 
     data = generate(insights)
 
