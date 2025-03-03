@@ -6,7 +6,6 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
-import subprocess
 from google import genai
 from google.genai import types
 
@@ -32,6 +31,38 @@ def hash_password(password):
 # Helper function to verify passwords
 def verify_password(hashed_password, password):
     return check_password_hash(hashed_password, password)
+
+# Security headers check
+def check_security_headers(response):
+    security_headers = [
+        "Content-Security-Policy", "X-Content-Type-Options", "X-Frame-Options", "Strict-Transport-Security"
+    ]
+    missing_headers = [header for header in security_headers if header not in response.headers]
+    return missing_headers
+
+# Open directories check
+def check_open_directories(url):
+    common_dirs = ['admin/', 'uploads/', 'backup/', 'files/', 'logs/']
+    open_dirs = []
+    for directory in common_dirs:
+        full_url = url.rstrip('/') + '/' + directory
+        try:
+            response = requests.get(full_url, timeout=5)
+            if response.status_code == 200 and "Index of" in response.text:
+                open_dirs.append(full_url)
+        except requests.RequestException:
+            pass
+    return open_dirs
+
+# Exposed JS files check
+def check_exposed_js(url):
+    try:
+        response = requests.get(url, timeout=5)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        scripts = [script['src'] for script in soup.find_all('script', src=True)]
+        return scripts
+    except requests.RequestException:
+        return []
 
 # Signup API
 @app.route('/signup', methods=['POST'])
@@ -121,32 +152,7 @@ def update_user():
 
     return jsonify({'message': 'User updated successfully'}), 200
 
-# Existing routes for scraping
-@app.route('/scrape-by-date/<int:year>', methods=['GET'])
-def scrape_by_date_route(year):
-    data = scrape_by_date(year)
-    return jsonify(data)
-
-@app.route('/no-of-cves-by-year', methods=['GET'])
-def no_of_cves_by_year_route():
-    data = no_of_cves_by_year()
-    return jsonify(data)
-
-@app.route('/scrape-by-type', methods=['GET'])
-def scrape_by_type_route():
-    data = scrape_by_type()
-    return jsonify(data)
-
-@app.route('/scrape-by-impact-types', methods=['GET'])
-def scrape_by_impact_types_route():
-    data = scrape_by_impact_types()
-    return jsonify(data)
-
-@app.route('/scrape-known-exploited/<int:year>', methods=['GET'])
-def scrape_known_exploited_route(year):
-    data = scrape_known_exploited(year)
-    return jsonify(data)
-
+# Generate insights using Gemini
 @app.route('/generate-insights', methods=['POST'])
 def generate_insights_route():
     data = request.get_json()
@@ -155,10 +161,66 @@ def generate_insights_route():
     if not url:
         return jsonify({'error': 'URL is required'}), 400
 
-    insights = generate_insights(url)
+    # Perform security scan
+    try:
+        response = requests.get(url, timeout=5)
+        missing_headers = check_security_headers(response)
+        open_dirs = check_open_directories(url)
+        exposed_js = check_exposed_js(url)
+    except requests.RequestException:
+        return jsonify({"error": "Failed to fetch the website"}), 500
+
+    # Prepare the prompt for Gemini
+    prompt = f"""
+    Security Scan Results for {url}:
+    - Missing Security Headers: {missing_headers}
+    - Open Directories: {open_dirs}
+    - Exposed JS Files: {exposed_js}
+
+    Based on these results, provide a concise security analysis and key recommendations to improve the security posture of the website.
+    """
+
+    # Generate insights using Gemini
+    insights = generate(prompt)
+
     return jsonify({'insights': insights})
 
-# Existing scraping functions
+# Gemini integration
+def generate(prompt):
+    client = genai.Client(
+        api_key=os.getenv("GEMINI_API_KEY"),
+    )
+
+    model = "gemini-2.0-flash"
+    contents = [
+        types.Content(
+            role="user",
+            parts=[
+                types.Part.from_text(
+                    text=prompt
+                ),
+            ],
+        ),
+    ]
+    generate_content_config = types.GenerateContentConfig(
+        temperature=1,
+        top_p=0.95,
+        top_k=40,
+        max_output_tokens=500,  # Limit the output tokens for concise response
+        response_mime_type="text/plain",
+    )
+
+    final_message = ""
+    for chunk in client.models.generate_content_stream(
+        model=model,
+        contents=contents,
+        config=generate_content_config,
+    ):
+        final_message += chunk.text
+
+    return final_message
+
+# Existing scraping functions (unchanged)
 def scrape_by_date(year):
     base_url = f'https://www.cvedetails.com/vulnerability-list/year-{year}/vulnerabilities.html'
     
@@ -310,83 +372,6 @@ def scrape_known_exploited(year):
         }
     
     return cveinfo_data
-
-def generate(input):
-    client = genai.Client(
-        api_key=os.getenv("GEMINI_API_KEY"),
-    )
-
-    model = "gemini-2.0-flash"
-    contents = [
-        types.Content(
-            role="user",
-            parts=[
-                types.Part.from_text(
-                    text=f"""
-                    Analyze the following network scan results and provide actionable insights for the user. Focus on identifying potential vulnerabilities, security risks, and any exposed services. For each issue identified, provide a brief explanation of the risk and recommend steps to mitigate or fix the issue. Be concise and prioritize the most critical issues.
-
-                    Scan Results:
-                    {input}
-
-                    Instructions:
-                    1. Identify open ports, services, and their versions.
-                    2. Highlight any known vulnerabilities associated with the services.
-                    3. Suggest actionable steps to secure the system (e.g., close unnecessary ports, update software, apply patches).
-                    4. If no critical issues are found, state that the system appears secure but recommend general best practices for hardening.
-
-                    Output Format:
-                    - **Issue**: [Description of the issue]
-                      **Risk**: [Explanation of the risk]
-                      **Recommendation**: [Steps to fix or mitigate the issue]
-
-                    Example:
-                    - **Issue**: Port 22 (SSH) is open.
-                      **Risk**: Exposes the system to brute-force attacks if weak credentials are used.
-                      **Recommendation**: Use strong passwords or SSH keys, disable root login, and consider using a non-standard port.
-
-                    Provide only the insights and recommendations. Do not include unnecessary details or explanations.
-                    """
-                ),
-            ],
-        ),
-    ]
-    generate_content_config = types.GenerateContentConfig(
-        temperature=1,
-        top_p=0.95,
-        top_k=40,
-        max_output_tokens=8192,
-        response_mime_type="text/plain",
-    )
-
-    final_message = ""
-    for chunk in client.models.generate_content_stream(
-        model=model,
-        contents=contents,
-        config=generate_content_config,
-    ):
-        final_message += chunk.text
-
-    return final_message
-
-def generate_insights(url):
-    insights = {}
-
-    # Run nmap scan
-    nmap_scan_result = subprocess.run(['sudo', 'nmap', '-sS', url], capture_output=True, text=True)
-    insights['nmap_scan'] = nmap_scan_result.stdout
-
-    # Run Nikto scan
-    nikto_scan_result = subprocess.run(['sudo', 'nikto', '-h', url], capture_output=True, text=True)
-    insights['nikto_scan'] = nikto_scan_result.stdout
-
-    # Run whatweb scan
-    whatweb_scan_result = subprocess.run(['sudo', 'whatweb', url], capture_output=True, text=True)
-    insights['whatweb_scan'] = whatweb_scan_result.stdout
-
-    data = generate(insights)
-
-    return data
-    
 
 if __name__ == '__main__':
     app.run(debug=True)
