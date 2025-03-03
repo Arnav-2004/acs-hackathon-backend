@@ -369,20 +369,12 @@ def generate(input):
     return final_message
 
 def generate_insights(url):
-    # This function will run some common attacks on the provided URL and generate insights
+    # This function will run a comprehensive nmap scan on the provided URL and generate insights
     insights = {}
 
-    # Run a port scan using nmap
-    port_scan_result = subprocess.run(['nmap', '-sS', url], capture_output=True, text=True)
-    insights['port_scan'] = port_scan_result.stdout
-
-    # Run a UDP scan using nmap
-    udp_scan_result = subprocess.run(['nmap', '-sU', url], capture_output=True, text=True)
-    insights['udp_scan'] = udp_scan_result.stdout
-
-    # Run a ping scan
-    # ping_result = subprocess.run(['ping', '-c', '4', url], capture_output=True, text=True)
-    # insights['ping'] = ping_result.stdout
+    # Run a comprehensive nmap scan to identify open ports, services, and their versions
+    nmap_scan_result = subprocess.run(['sudo', 'nmap', '-sS', url], capture_output=True, text=True)
+    insights['nmap_scan'] = nmap_scan_result.stdout
 
     # Here you can add more scans or attacks as needed
     data = generate(insights)
