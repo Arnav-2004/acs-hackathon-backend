@@ -369,14 +369,16 @@ def generate(input):
     return final_message
 
 def generate_insights(url):
-    # This function will run a comprehensive nmap scan on the provided URL and generate insights
     insights = {}
 
-    # Run a comprehensive nmap scan to identify open ports, services, and their versions
+    # Example of using nmap for network scanning
     nmap_scan_result = subprocess.run(['sudo', 'nmap', '-sS', url], capture_output=True, text=True)
     insights['nmap_scan'] = nmap_scan_result.stdout
 
-    # Here you can add more scans or attacks as needed
+    # Example of using Nikto for web server scanning
+    nikto_scan_result = subprocess.run(['nikto', '-h', url], capture_output=True, text=True)
+    insights['nikto_scan'] = nikto_scan_result.stdout
+
     data = generate(insights)
 
     return data
