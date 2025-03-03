@@ -7,3 +7,4 @@ pymongo
 flask-cors
 python-dotenv
 Werkzeug
+google-genai

@@ -6,6 +6,9 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
+import subprocess
+from google import genai
+from google.genai import types
 
 # Load environment variables
 load_dotenv()
@@ -143,6 +146,17 @@ def scrape_by_impact_types_route():
 def scrape_known_exploited_route(year):
     data = scrape_known_exploited(year)
     return jsonify(data)
+
+@app.route('/generate-insights', methods=['POST'])
+def generate_insights_route():
+    data = request.get_json()
+    url = data.get('url')
+
+    if not url:
+        return jsonify({'error': 'URL is required'}), 400
+
+    insights = generate_insights(url)
+    return jsonify({'insights': insights})
 
 # Existing scraping functions
 def scrape_by_date(year):
@@ -296,6 +310,69 @@ def scrape_known_exploited(year):
         }
     
     return cveinfo_data
+
+def generate(input):
+    client = genai.Client(
+        api_key=os.getenv("GEMINI_API_KEY"),
+    )
+
+    model = "gemini-2.0-flash"
+    contents = [
+        types.Content(
+            role="user",
+            parts=[
+                types.Part.from_text(
+                    text=f"Generate insights from the following object: {input}"
+                ),
+            ],
+        ),
+    ]
+    generate_content_config = types.GenerateContentConfig(
+        temperature=1,
+        top_p=0.95,
+        top_k=40,
+        max_output_tokens=8192,
+        response_mime_type="text/plain",
+    )
+
+    final_message = ""
+    for chunk in client.models.generate_content_stream(
+        model=model,
+        contents=contents,
+        config=generate_content_config,
+    ):
+        final_message += chunk.text
+
+    return final_message
+
+def generate_insights(url):
+    # This function will run some common attacks on the provided URL and generate insights
+    commands = [
+        "apt-get update && apt-get install -y nmap",
+    ]
+    for cmd in commands:
+        print(cmd)
+        subprocess.run(cmd, shell=True)
+
+    insights = {}
+
+    # Run a port scan using nmap
+    port_scan_result = subprocess.run(['nmap', '-sS', url], capture_output=True, text=True)
+    insights['port_scan'] = port_scan_result.stdout
+
+    # Run a UDP scan using nmap
+    udp_scan_result = subprocess.run(['nmap', '-sU', url], capture_output=True, text=True)
+    insights['udp_scan'] = udp_scan_result.stdout
+
+    # Run a ping scan
+    ping_result = subprocess.run(['ping', '-c', '4', url], capture_output=True, text=True)
+    insights['ping'] = ping_result.stdout
+
+    # Here you can add more scans or attacks as needed
+    data = generate(insights)
+
+    return data
+    
 
 if __name__ == '__main__':
     app.run(debug=True)
