@@ -152,6 +152,31 @@ def update_user():
 
     return jsonify({'message': 'User updated successfully'}), 200
 
+@app.route('/scrape-by-date/<int:year>', methods=['GET'])
+def scrape_by_date_route(year):
+    data = scrape_by_date(year)
+    return jsonify(data)
+
+@app.route('/no-of-cves-by-year', methods=['GET'])
+def no_of_cves_by_year_route():
+    data = no_of_cves_by_year()
+    return jsonify(data)
+
+@app.route('/scrape-by-type', methods=['GET'])
+def scrape_by_type_route():
+    data = scrape_by_type()
+    return jsonify(data)
+
+@app.route('/scrape-by-impact-types', methods=['GET'])
+def scrape_by_impact_types_route():
+    data = scrape_by_impact_types()
+    return jsonify(data)
+
+@app.route('/scrape-known-exploited/<int:year>', methods=['GET'])
+def scrape_known_exploited_route(year):
+    data = scrape_known_exploited(year)
+    return jsonify(data)
+
 # Generate insights using Gemini
 @app.route('/generate-insights', methods=['POST'])
 def generate_insights_route():
