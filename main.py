@@ -322,7 +322,30 @@ def generate(input):
             role="user",
             parts=[
                 types.Part.from_text(
-                    text=f"Generate insights from the following object: {input}"
+                    text=f"""
+                    Analyze the following network scan results and provide actionable insights for the user. Focus on identifying potential vulnerabilities, security risks, and any exposed services. For each issue identified, provide a brief explanation of the risk and recommend steps to mitigate or fix the issue. Be concise and prioritize the most critical issues.
+
+                    Scan Results:
+                    {input}
+
+                    Instructions:
+                    1. Identify open ports, services, and their versions.
+                    2. Highlight any known vulnerabilities associated with the services.
+                    3. Suggest actionable steps to secure the system (e.g., close unnecessary ports, update software, apply patches).
+                    4. If no critical issues are found, state that the system appears secure but recommend general best practices for hardening.
+
+                    Output Format:
+                    - **Issue**: [Description of the issue]
+                      **Risk**: [Explanation of the risk]
+                      **Recommendation**: [Steps to fix or mitigate the issue]
+
+                    Example:
+                    - **Issue**: Port 22 (SSH) is open.
+                      **Risk**: Exposes the system to brute-force attacks if weak credentials are used.
+                      **Recommendation**: Use strong passwords or SSH keys, disable root login, and consider using a non-standard port.
+
+                    Provide only the insights and recommendations. Do not include unnecessary details or explanations.
+                    """
                 ),
             ],
         ),
