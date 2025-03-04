@@ -407,7 +407,7 @@ def scrape_news():
     base_url = "https://thehackernews.com/search/label/Vulnerability"
 
     res = requests.get(base_url, headers=HEADERS)
-    soup = BeautifulSoup(res.text, 'lxml')
+    soup = BeautifulSoup(res.text, 'html.parser')
 
     news_data = {}
 
