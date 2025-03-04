@@ -190,6 +190,7 @@ def scrape_news_route():
 def generate_insights_route():
     data = request.get_json()
     url = data.get('url')
+    options = data.get('options')
 
     if not url:
         return jsonify({'error': 'URL is required'}), 400
@@ -206,6 +207,7 @@ def generate_insights_route():
     # Prepare the prompt for Gemini
     prompt = f"""
     Security Scan Results for {url}:
+    - {options}
     - Missing Security Headers: {missing_headers}
     - Open Directories: {open_dirs}
     - Exposed JS Files: {exposed_js}
