@@ -8,6 +8,7 @@ import os
 from werkzeug.security import generate_password_hash, check_password_hash
 from google import genai
 from google.genai import types
+import time
 
 # Load environment variables
 load_dotenv()
@@ -407,7 +408,7 @@ def scrape_news():
     base_url = "https://thehackernews.com/search/label/Vulnerability"
 
     res = requests.get(base_url, headers=HEADERS)
-    soup = BeautifulSoup(res.text, 'html.parser')
+    soup = BeautifulSoup(res.text, 'lxml')
 
     news_data = {}
 
@@ -426,6 +427,7 @@ def scrape_news():
                 'link': link
             }
             index += 1
+            time.sleep(1)
 
     return news_data
 
