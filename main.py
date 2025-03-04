@@ -395,6 +395,7 @@ def scrape_known_exploited(year):
         publisheddate = info.find_all('div', class_="row mb-1")[2].text.split("\n")[2].strip()
         updateddate = info.find_all('div', class_="row mb-1")[3].text.split("\n")[2].strip()
         cisakevadded = info.find('div', class_="col-md-3").find('div', string="CISA KEV Added").find_next_sibling('div').text.strip()
+        link = f"https://www.cvedetails.com{info.find('a').get('href')}"
         cveinfo_data[index] = {
             'cveid': cveid,
             'summary': summary,
@@ -403,7 +404,8 @@ def scrape_known_exploited(year):
             'epssscore': epssscore,
             'publisheddate': publisheddate,
             'updateddate': updateddate,
-            'cisakevadded': cisakevadded
+            'cisakevadded': cisakevadded,
+            'link': link
         }
     
     return cveinfo_data
