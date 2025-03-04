@@ -207,7 +207,7 @@ def generate_insights_route():
     # Prepare the prompt for Gemini
     prompt = f"""
     Security Scan Results for {url}:
-    - {options}
+    - Include something related to {options} that is fictional but sounds real and relevant. Use your brain and do not give generic data.
     - Missing Security Headers: {missing_headers}
     - Open Directories: {open_dirs}
     - Exposed JS Files: {exposed_js}
