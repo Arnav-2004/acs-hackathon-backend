@@ -22,8 +22,11 @@ db = client['acshackathon']  # Replace with your database name
 users_collection = db['users']  # Collection to store user data
 
 # Headers for web scraping
-HEADERS = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
-
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+}
 # Helper function to hash passwords
 def hash_password(password):
     return generate_password_hash(password)
@@ -406,7 +409,7 @@ def scrape_known_exploited(year):
 def scrape_news():
     base_url = "https://thehackernews.com/search/label/Vulnerability"
 
-    res = requests.get(base_url, headers=HEADERS, verify=False)
+    res = requests.get(base_url, headers=HEADERS)
     soup = BeautifulSoup(res.text, 'lxml')
 
     news_data = {}
